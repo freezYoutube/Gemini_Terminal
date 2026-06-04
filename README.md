@@ -4,5 +4,6 @@ Terminal For Gemini. Just copy the prompt and paste it to Gemini, or use the web
 Visit this site. 
 freezYoutube.github.io/Gemini_Terminal
 # Website With Copying 
-Visit this site
-Building Website
+Visit this site.
+freezyoutube.github.io/Gemini_Terminal_CopyAndPaste
+
