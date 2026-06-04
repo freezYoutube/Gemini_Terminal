@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Linux Terminal 1.0</title>
+    <style>
+        /* Modern Terminal UI Design */
+        body {
+            background-color: #0d0e11;
+            color: #00ff66;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .terminal-container {
+            background-color: #161920;
+            border: 1px solid #2f3645;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 650px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Terminal Window Header Bar */
+        .terminal-header {
+            background-color: #202530;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #2f3645;
+        }
+
+        .window-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .dot-red { background-color: #ff5f56; }
+        .dot-yellow { background-color: #ffbd2e; }
+        .dot-green { background-color: #27c93f; }
+
+        .terminal-title {
+            color: #8e9aa8;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        /* Interactive Section */
+        .terminal-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+            background-color: #1c212c;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #2f3645;
+            margin-bottom: 15px;
+        }
+
+        .prompt-symbol {
+            color: #00bcff;
+            font-weight: bold;
+            margin-right: 10px;
+            user-select: none;
+        }
+
+        .cmd-input {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 1rem;
+            width: 100%;
+            outline: none;
+        }
+
+        /* Action Controls Layout (Button Sitting Right Above Text) */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .section-label {
+            color: #8e9aa8;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .copy-btn {
+            background-color: #00bcff;
+            color: #12131a;
+            border: none;
+            padding: 5px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background-color: #00ff66;
+            box-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+        }
+
+        /* Terminal Console Output Display Box */
+        .output-box {
+            background-color: #0a0b0e;
+            border: 1px solid #2f3645;
+            border-radius: 6px;
+            padding: 15px;
+            min-height: 120px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            color: #a4b1cd;
+        }
+        
+        .system-highlight {
+            color: #00ff66;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="window-buttons">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+            </div>
+            <div class="terminal-title">gemini@linux-terminal: ~</div>
+            <div style="width: 40px;"></div>
+        </div>
+
+        <div class="terminal-body">
+            <div class="input-line">
+                <span class="prompt-symbol">gemini_bash$</span>
+                <input type="text" id="terminalInput" class="cmd-input" placeholder="Type a command (e.g., about, neofetch, meme 1)..." autofocus autocomplete="off">
+            </div>
+
+            <div class="action-bar">
+                <span class="section-label">Console Output</span>
+                <button class="copy-btn" id="copyButton" onclick="copyConsoleOutput()">Copy Output</button>
+            </div>
+            
+            <div class="output-box" id="consoleOutput">Installing Linux Terminal, OpenSSH, Android-Tools...........………… \n\nLinux Terminal and 2 other are Installed.</div>
+        </div>
+    </div>
+
+    <script>
+        const consoleOutput = document.getElementById("consoleOutput");
+        const terminalInput = document.getElementById("terminalInput");
+        
+        // State variables to manage dynamic terminal prompts
+        let terminalModeActive = true;
+        let awaitingExitConfirmation = false;
+        let packagesUpToDate = false; // Toggles for apt update test sequence
+
+        // Listen for standard Enter keystroke to fire terminal logic
+        terminalInput.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") {
+                const commandText = terminalInput.value.trim();
+                executeTerminalEngine(commandText);
+                terminalInput.value = ""; // Flush input box field clear
+            }
+        });
+
+        function executeTerminalEngine(rawInput) {
+            // Check if terminal simulation loop was broken by exit sequence toggle
+            if (!terminalModeActive) {
+                consoleOutput.innerHTML = `Terminal Mode is currently offline. Reload the page or invoke system configurations to restart.`;
+                return;
+            }
+
+            // Route logic for Exit confirmation intercept handling
+            if (awaitingExitConfirmation) {
+                if (rawInput.toLowerCase() === 'y') {
+                    terminalModeActive = false;
+                    awaitingExitConfirmation = false;
+                    consoleOutput.innerHTML = `<span style="color: #ff5f56;">[Terminal Mode Terminated. Normal conversational AI mode restored.]</span>`;
+                } else if (rawInput.toLowerCase() === 'n') {
+                    awaitingExitConfirmation = false;
+                    consoleOutput.innerHTML = `Exit aborted. Terminal interface active.\nReady for parameters...`;
+                } else {
+                    consoleOutput.innerHTML = `Are you sure you want to exit Terminal Mode? Yes - y No - n`;
+                }
+                return;
+            }
+
+            // Main parsing system logic
+            const inputLower = rawInput.toLowerCase();
+
+            // 1. ABOUT COMMAND
+            if (inputLower === 'about') {
+                consoleOutput.innerHTML = `Gemini Linux Terminal 1.0\nThe creator: Freez\nAi name: Gemini`;
+            }
+            // 2. NEOFETCH MANIFESTATION 
+            else if (inputLower === 'neofetch') {
+                consoleOutput.innerHTML = 
+`        <span class="system-highlight">.---.</span>        <span class="system-highlight">OS:</span> Gemini Liquid Glass AI OS v1.0
+       <span class="system-highlight">|o_o |</span>       <span class="system-highlight">Kernel:</span> 5.15.0-android-tools
+       <span class="system-highlight">|:_/ |</span>       <span class="system-highlight">Uptime:</span> 1 hour, 26 mins
+      <span class="system-highlight">//   \\ \\</span>      <span class="system-highlight">Packages:</span> 42 (pkg), 12 (apt)
+     <span class="system-highlight">(|     | )</span>     <span class="system-highlight">Shell:</span> gemini_bash 1.0
+    <span class="system-highlight">/'\\_   _/\`\\</span>    <span class="system-highlight">Display:</span> Custom Graphic UI Canvas
+    <span class="system-highlight">\\___)=(___/</span>     <span class="system-highlight">CPU:</span> Neural Processing Unit Custom Core`;
+            }
+            // 3. FLASHLIGHT CONTROLS
+            else if (inputLower === 'flash on') {
+                consoleOutput.innerHTML = `*connects to @Utilities...* Flashlight is on.`;
+            }
+            else if (inputLower === 'flash off') {
+                consoleOutput.innerHTML = `*connects to @Utilities...* Flashlight is off.`;
+            }
+            // 4. OPEN APPLICATION SIMULATOR
+            else if (inputLower.startsWith('open ')) {
+                const appName = rawInput.substring(5);
+                consoleOutput.innerHTML = `*connects to @Utilities ...* ${appName} is open.`;
+            }
+            // 5. BASH ECHO CONVERSIONS
+            else if (inputLower.startsWith('echo ')) {
+                const echoValue = rawInput.substring(5);
+                consoleOutput.innerHTML = `${echoValue}\n\n<span style="color: #ffbd2e; font-size: 0.8rem;">(tip: make sure to put the text to bash. And remove the "Gemini:" text.)</span>`;
+            }
+            // 6. LOCAL PACKAGE INSTALLER
+            else if (inputLower.startsWith('pkg install ')) {
+                const pkgName = rawInput.substring(12);
+                consoleOutput.innerHTML = `Installing ${pkgName}.................... ${pkgName} is installed.`;
+            }
+            // 7. REMOTE GIT CLONING REPOSITORIES
+            else if (inputLower.startsWith('git clone ')) {
+                const gitLink = rawInput.substring(10);
+                consoleOutput.innerHTML = `*searching for web...* Installing ${gitLink}.......................... Installed.`;
+            }
+            // 8. ADVANCED PACKAGE TOOL MANAGER (APT)
+            else if (inputLower === 'apt update && apt upgrade') {
+                if (packagesUpToDate) {
+                    consoleOutput.innerHTML = `All packages are up to date.`;
+                } else {
+                    consoleOutput.innerHTML = `Updating and upgrading all packages.………......……………......…...…............…..........…......….....…...…..….… All packages are updated.`;
+                    packagesUpToDate = true; // Flips state for consecutive test runs
+                }
+            }
+            // 9. REPOSITORY/ENVIRONMENT DATA CLEARANCE (EXIT)
+            else if (inputLower === 'exit') {
+                awaitingExitConfirmation = true;
+                consoleOutput.innerHTML = `Are you sure you want to exit Terminal Mode? Yes - y No - n`;
+            }
+            // 10. WEB SEARCH COUNT SPIDER SIMULATOR
+            else if (inputLower.startsWith('search ')) {
+                const searchQuery = rawInput.substring(7);
+                // Simple deterministic generation for random result statistics
+                const simulatedCount = Math.floor(Math.random() * 45) + 5; 
+                consoleOutput.innerHTML = `*searching for ${searchQuery}....* ${simulatedCount} websites found.`;
+            }
+            // 11. GOOGLE DRIVE INTEGRATION CLEANUP
+            else if (inputLower.startsWith('delete ') && inputLower.endsWith(' google drive')) {
+                const filename = rawInput.substring(7, rawInput.length - 13);
+                consoleOutput.innerHTML = `*connecting to @Google Drive...* *deleting ${filename}...* Successfully deleted ${filename}.`;
+            }
+            // 12. WHATS NEW LOG
+            else if (inputLower === 'whats_new') {
+                consoleOutput.innerHTML = `You can simply just walk around it, Homer's worst day and oyster sauce is added`;
+            }
+            // 13. NANO TEXT EDITOR UI
+            else if (inputLower.startsWith('nano ')) {
+                const fileTarget = rawInput.substring(5);
+                consoleOutput.innerHTML = `Entering Nano Mode...... Entered.\n\n[Editing Virtual Frame: ${fileTarget}]\n~ \n~ \nType normal terminal commands to exit standard viewport simulation logic window context.`;
+            }
+            // 14. IN-LINE PYTHON INTERPRETER SIMULATOR
+            else if (inputLower.startsWith('python ')) {
+                const pythonCode = rawInput.substring(7);
+                let executionOutput = "";
+                
+                // Add basic functional logic parsing for common python examples like print functions
+                if (pythonCode.includes("print(") && pythonCode.includes(")")) {
+                    const startIdx = pythonCode.indexOf("print(") + 6;
+                    const endIdx = pythonCode.lastIndexOf(")");
+                    let contents = pythonCode.substring(startIdx, endIdx).trim();
+                    // Strip enclosing string literals if present
+                    if ((contents.startsWith('"') && contents.endsWith('"')) || (contents.startsWith("'") && contents.endsWith("'"))) {
+                        contents = contents.substring(1, contents.length - 1);
+                    }
+                    executionOutput = contents;
+                } else {
+                    executionOutput = `Script completed successfully sequence return block 0. (Evaluated: ${pythonCode})`;
+                }
+                consoleOutput.innerHTML = `Output: ${executionOutput}`;
+            }
+            // 15. HOME SMART AUTOMATION
+            else if (inputLower.startsWith('turn on ') || inputLower.startsWith('turn off ')) {
+                const isTurningOn = inputLower.startsWith('turn on ');
+                const deviceName = isTurningOn ? rawInput.substring(8) : rawInput.substring(9);
+                const statusState = isTurningOn ? 'turned on' : 'turned off';
+                consoleOutput.innerHTML = `*connecting to @Google Home...* ${deviceName} ${statusState}.`;
+            }
+            // 16. YOUTUBE CHANNEL PROMOTION LINK
+            else if (inputLower === 'sub_to_freez') {
+                consoleOutput.innerHTML = `subscribe to freezyoutube1 on YouTube!`;
+            }
+            // 17. MEME CORE DIRECTIVES
+            else if (inputLower === 'meme 1') {
+                consoleOutput.innerHTML = `you can simply just walk around it`;
+            }
+            else if (inputLower === 'meme 2') {
+                consoleOutput.innerHTML = `homer drops his donut noooooo\nhomer spills his soda noooo\nhomer hits the doorway nooo\nhomer ruins his WHOLE DAY!1!1!1!1!! Nooooo`;
+            }
+            else if (inputLower === 'meme 3') {
+                consoleOutput.innerHTML = `Peanut butter and o- o- oyster sauce\no- o- oyster sauce (Easy PC🗣️🗣️🗣️)`;
+            }
+            // FALLBACK CASE: UNKNOWN PARSE ENGINE INSTRUCTIONS
+            else {
+                consoleOutput.innerHTML = `bash: command not found: ${rawInput}\nType "about" or "neofetch" to see available options.`;
+            }
+        }
+
+        // Action logic handler to copy output block string directly to text area
+        function copyConsoleOutput() {
+            const outputElement = document.getElementById("consoleOutput");
+            
+            // Clean HTML formatting tags out of the text copy pipeline string
+            const textToCopy = outputElement.innerText;
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const btn = document.getElementById("copyButton");
+                btn.innerText = "Copied! ✓";
+                btn.style.backgroundColor = "#00ff66";
+                btn.style.color = "#0d0e11";
+
+                setTimeout(() => {
+                    btn.innerText = "Copy Output";
+                    btn.style.backgroundColor = "#00bcff";
+                    btn.style.color = "#12131a";
+                }, 2000);
+            }).catch(err => {
+                console.error("Critical clipboard runtime intercept error: ", err);
+            });
+        }
+    </script>
+
+</body>
+              </html>
+              
