@@ -5,5 +5,5 @@ Visit this site.
 freezYoutube.github.io/Gemini_Terminal
 # Website With Copying 
 Visit this site.
-freezyoutube.github.io/Gemini_Terminal_CopyAndPaste
+freezyoutube.github.io/Gemini_Terminal_CopyAndPasteWebsite
 
