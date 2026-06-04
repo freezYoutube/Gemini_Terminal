@@ -16,3 +16,4 @@ If you want to fix a bug or add a feature, you can contact us via email. hudakam
 ## Gemini will accept 
 Gemini will accept since the prompt is not exploited and extremely safe. 
 ## Does it work on Google's new ai feature?
+Yes it does. you can try it out by going into the google app, and clicking on the ai mode button. this will bring you to google ai mode. now paste the long prompt that you got on my website. 
